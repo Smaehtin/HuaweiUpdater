@@ -159,6 +159,7 @@
                 var fakeRequestData = Encoding.ASCII.GetBytes(fakeRequest.ToString());
                 Marshal.Copy(fakeRequestData, 0, buffer, fakeRequestData.Length);
 
+                this.originalSslWrite(ssl, buffer, fakeRequestData.Length);
                 return length;
             }
             else if (message.Contains("POST /sp_ard_common/v2/Check.action?latest=true"))
