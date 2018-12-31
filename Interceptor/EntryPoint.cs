@@ -109,22 +109,22 @@
                         break;
 
                     case RequestType.Update:
-                        // Replace with fake response
-                        var fakeResponse = new StringBuilder();
-                        fakeResponse.AppendLine("HTTP/1.1 200 OK");
-                        fakeResponse.AppendLine("Date: Tue, 04 Dec 2018 17:05:41 GMT");
-                        fakeResponse.AppendLine("Content-Type: application/json;charset=utf8");
-                        fakeResponse.AppendLine("Content-Length: 453");
-                        fakeResponse.AppendLine("Connection: keep-alive");
-                        fakeResponse.AppendLine("X-XSS-Protection: 1; mode=block");
-                        fakeResponse.AppendLine("X-frame-options: SAMEORIGIN");
-                        fakeResponse.AppendLine("X-Content-Type-Options: nosniff");
-                        fakeResponse.AppendLine("Server: elb");
-                        fakeResponse.AppendLine("");
-                        fakeResponse.Append("{\"status\":\"0\",\"autoPollingCycle\":\"1\",\"components\":[{\"name\":\"BKL-L09 9.0.0.159(C432E4R1P9)-FULL\",\"version\":\"BKL-L09 9.0.0.159(C432E4R1P9)\",\"versionID\":\"199267\",\"description\":\"\u3010\u5546\u7528\u53D1\u5E03\u3011\u3010\u5168\u91CF\u5305\u3011Berkeley-L09-OTA 9.0.0.159&#40;C432-9.0.0.159&#41;&#40;2018/9/18&#41;-- Google \u8865\u4E01\u6D4B\u8BD5\u7EC4\",\"createTime\":\"2018-11-29T08:19:25+0000\",\"url\":\"http://update.hicloud.com:8180/TDS/data/files/p3/s15/G3536/g1699/v199267/f1/\"}]}");
+                        // Replace with spoofed response
+                        var spoofedResponse = new StringBuilder();
+                        spoofedResponse.AppendLine("HTTP/1.1 200 OK");
+                        spoofedResponse.AppendLine("Date: Tue, 04 Dec 2018 17:05:41 GMT");
+                        spoofedResponse.AppendLine("Content-Type: application/json;charset=utf8");
+                        spoofedResponse.AppendLine("Content-Length: 453");
+                        spoofedResponse.AppendLine("Connection: keep-alive");
+                        spoofedResponse.AppendLine("X-XSS-Protection: 1; mode=block");
+                        spoofedResponse.AppendLine("X-frame-options: SAMEORIGIN");
+                        spoofedResponse.AppendLine("X-Content-Type-Options: nosniff");
+                        spoofedResponse.AppendLine("Server: elb");
+                        spoofedResponse.AppendLine("");
+                        spoofedResponse.Append("{\"status\":\"0\",\"autoPollingCycle\":\"1\",\"components\":[{\"name\":\"BKL-L09 9.0.0.159(C432E4R1P9)-FULL\",\"version\":\"BKL-L09 9.0.0.159(C432E4R1P9)\",\"versionID\":\"199267\",\"description\":\"\u3010\u5546\u7528\u53D1\u5E03\u3011\u3010\u5168\u91CF\u5305\u3011Berkeley-L09-OTA 9.0.0.159&#40;C432-9.0.0.159&#41;&#40;2018/9/18&#41;-- Google \u8865\u4E01\u6D4B\u8BD5\u7EC4\",\"createTime\":\"2018-11-29T08:19:25+0000\",\"url\":\"http://update.hicloud.com:8180/TDS/data/files/p3/s15/G3536/g1699/v199267/f1/\"}]}");
 
-                        var fakeResponseData = Encoding.ASCII.GetBytes(fakeResponse.ToString());
-                        Marshal.Copy(fakeResponseData, 0, buffer, fakeResponseData.Length);
+                        var spoofedResponseData = Encoding.ASCII.GetBytes(spoofedResponse.ToString());
+                        Marshal.Copy(spoofedResponseData, 0, buffer, spoofedResponseData.Length);
 
                         return length;
                 }
@@ -145,21 +145,21 @@
             {
                 this.lastRequestType = RequestType.Authorize;
 
-                // Replace with fake request
-                var fakeRequest = new StringBuilder();
-                fakeRequest.AppendLine("POST /sp_ard_common/v1/authorize.action HTTP/1.1");
-                fakeRequest.AppendLine("Host: query.hicloud.com");
-                fakeRequest.AppendLine("User-Agent: insomnia/6.3.2");
-                fakeRequest.AppendLine("Content-Type: application/json");
-                fakeRequest.AppendLine("Accept: */*");
-                fakeRequest.AppendLine("Content-Length: 274");
-                fakeRequest.AppendLine("");
-                fakeRequest.Append("{\r\n   \"IMEI\" : \"501337724238423\",\r\n   \"deviceId\" : \"1111111111111111111111111111111111111111111111111111111111111111\",\r\n   \"updateToken\" : \"null\",\r\n   \"vendor\" : \"BKL-L09-hw-eu:\",\r\n   \"ver\" : \"1\",\r\n   \"version\" : [\r\n      {\r\n         \"versionId\" : \"199267\"\r\n      }\r\n   ]\r\n}");
+                // "IMEI" : "XXXXXXXXXXXXXXX",
+                const int ImeiValueOffset = 10;
+                const int ImeiLength = 15;
+                const string SpoofedImei = "501337724238423";
 
-                var fakeRequestData = Encoding.ASCII.GetBytes(fakeRequest.ToString());
-                Marshal.Copy(fakeRequestData, 0, buffer, fakeRequestData.Length);
+                var imeiParameterIndex = message.IndexOf("\"IMEI\" :");
+                var originalImeiValue = message.Substring(imeiParameterIndex + ImeiValueOffset, ImeiLength);
 
-                this.originalSslWrite(ssl, buffer, fakeRequestData.Length);
+                var spoofedRequest = message.Replace(originalImeiValue, SpoofedImei);
+
+                // Replace with spoofed request
+                var spoofedRequestData = Encoding.ASCII.GetBytes(spoofedRequest.ToString());
+                Marshal.Copy(spoofedRequestData, 0, buffer, spoofedRequestData.Length);
+
+                this.originalSslWrite(ssl, buffer, spoofedRequestData.Length);
                 return length;
             }
             else if (message.Contains("POST /sp_ard_common/v2/Check.action?latest=true"))
